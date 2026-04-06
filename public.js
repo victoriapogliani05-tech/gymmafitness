@@ -257,17 +257,32 @@ async function handleRegister() {
             email, password
         });
 
-        if (authError) {
-            // Translate common error
-            let msg = authError.message;
-            if (msg.includes('already registered')) msg = 'Este correo ya está registrado en la base de datos.';
-            showError(errorEl, 'Error al crear cuenta: ' + msg);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            return;
-        }
+        let auth_id = null;
 
-        const auth_id = authData.user.id;
+        if (authError) {
+            // Case: User already exists in Supabase Auth (but maybe was deleted from members table)
+            if (authError.message.includes('already registered')) {
+                console.log('[public.js] User already in Auth. Attempting to link by DNI...');
+                const { data: signInData, error: signInError } = await window.supabaseApp.auth.signInWithPassword({
+                    email, password
+                });
+
+                if (signInError) {
+                    showError(errorEl, 'Este correo ya tiene cuenta, pero la contraseña no coincide. Intentá con otra o recuperala.');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+                auth_id = signInData.user.id;
+            } else {
+                showError(errorEl, 'Error al crear cuenta: ' + authError.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
+        } else if (authData && authData.user) {
+            auth_id = authData.user.id;
+        }
 
         // Resolve fee
         let fee = 0;
