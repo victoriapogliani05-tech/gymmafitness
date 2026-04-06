@@ -53,6 +53,7 @@ function bindPublicEvents() {
     if(loginPass) loginPass.addEventListener('keypress', e => { if (e.key === 'Enter') handleLogin(); });
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
 
+
     // "Registrate acá" link
     document.getElementById('link-register').addEventListener('click', e => {
         e.preventDefault();
@@ -244,8 +245,8 @@ async function handleRegister() {
     try {
         // Check DNI not already registered (using unauthenticated call if allowed, or we just rely on unique constraint, but DNI check is fine)
         const existing = await getMemberByDni(registrationDni);
-        if (existing) {
-            showError(errorEl, 'Este DNI ya está registrado. Volvé al inicio e ingresá con tu correo.');
+        if (existing && existing.auth_id) {
+            showError(errorEl, 'Este DNI ya está registrado con una cuenta activa. Intentá iniciar sesión.');
             btn.innerHTML = originalText;
             btn.disabled = false;
             return;
@@ -276,22 +277,29 @@ async function handleRegister() {
         }
 
         const today = new Date();
-        const newMember = {
+        const memberData = {
             name: name,
             dni: registrationDni,
             phone: phone,
             plan: selectedPlan,
             daysPerWeek: selectedDays,
             fee: fee,
-            paidMonth: null,
-            routine: null,
-            pathologies: document.getElementById('reg-pathology').value.trim(),
-            registeredAt: today.toISOString(),
+            paidMonth: existing ? existing.paidMonth : null,
+            routine: existing ? existing.routine : null,
+            pathologies: document.getElementById('reg-pathology').value.trim() || (existing ? existing.pathologies : ''),
+            registeredAt: existing ? existing.registeredAt : today.toISOString(),
             auth_id: auth_id
         };
 
-        // 2. Insert into database
-        await addMember(newMember);
+        // 2. Insert or Update into database
+        if (existing) {
+            memberData.id = existing.id;
+            await updateMember(memberData);
+            console.log('[public.js] Profile linked to existing imported member.');
+        } else {
+            await addMember(memberData);
+            console.log('[public.js] New member created.');
+        }
 
         errorEl.textContent = '';
         hideAll();
@@ -492,6 +500,7 @@ function hideAll() {
     document.getElementById('member-panel').style.display = 'none';
     document.getElementById('register-success').style.display = 'none';
 }
+
 
 function showError(el, msg) {
     el.textContent = msg;

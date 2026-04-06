@@ -203,10 +203,11 @@ async function deleteMember(memberId) {
 }
 
 async function getMemberByDni(dni) {
+    const cleanDni = String(dni || '').replace(/\D/g, '');
     const { data, error } = await window.supabaseApp
         .from('members')
         .select('*')
-        .eq('dni', dni)
+        .eq('dni', cleanDni)
         .maybeSingle();
 
     if (error) {
@@ -283,6 +284,7 @@ async function deleteReview(reviewId) {
         console.error('Error deleting review:', error);
     }
 }
+
 
 // ── Formatting Helpers ────────────────────────────────────────
 function formatDate(dateString) {
