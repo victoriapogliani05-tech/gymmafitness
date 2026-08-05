@@ -8,9 +8,10 @@ let selectedPlan = '';
 let selectedDays = '';
 let currentMemberDni = ''; // Track logged-in member
 
-function initPublicApp() {
+async function initPublicApp() {
     console.log('[public.js] Initializing app...');
     try {
+        await loadPlanPrices();
         bindPublicEvents();
 
         // Smooth scroll (skip links that have specific IDs we handle ourselves)
@@ -198,8 +199,9 @@ function showLoginBox() {
 }
 
 // ── Registration Flow ─────────────────────────────────────────
-function showRegistrationForm() {
+async function showRegistrationForm() {
     hideAll();
+    await loadPlanPrices();
     document.getElementById('register-box').style.display = 'block';
     registrationDni = '';
     document.getElementById('reg-dni-display').textContent = '';
@@ -283,6 +285,9 @@ async function handleRegister() {
         } else if (authData && authData.user) {
             auth_id = authData.user.id;
         }
+
+        // Refresh plan prices from Supabase right before resolving fee
+        await loadPlanPrices();
 
         // Resolve fee
         let fee = 0;
