@@ -289,11 +289,18 @@ async function handleRegister() {
         // Refresh plan prices from Supabase right before resolving fee
         await loadPlanPrices();
 
-        // Resolve fee
+        // Resolve fee — sólo si los precios vinieron realmente de la base.
+        // Si no se pudieron leer, dejamos la cuota en 0 ("A confirmar por la
+        // profe") en vez de grabar el precio por defecto del código, que está
+        // desactualizado y quedaría fijado en la ficha del socio.
         let fee = 0;
         if (selectedPlan === 'estandar') {
-            const opt = PLANS.estandar.options.find(o => String(o.days) === String(selectedDays));
-            fee = opt ? opt.fee : 0;
+            if (planPricesLoaded) {
+                const opt = PLANS.estandar.options.find(o => String(o.days) === String(selectedDays));
+                fee = opt ? opt.fee : 0;
+            } else {
+                console.warn('[public.js] Precios no disponibles: se registra con cuota a confirmar.');
+            }
         }
 
         const today = new Date();
@@ -490,8 +497,9 @@ async function saveProfile() {
     member.daysPerWeek = days;
     member.pathologies = pathologies;
 
-    // Auto-update fee for estándar
-    if (plan === 'estandar') {
+    // Auto-update fee for estándar — sólo con precios traídos de la base,
+    // para no pisar la cuota real con el valor por defecto del código.
+    if (plan === 'estandar' && planPricesLoaded) {
         const opt = PLANS.estandar.options.find(o => String(o.days) === String(days));
         member.fee = opt ? opt.fee : member.fee;
     }
